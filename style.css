@@ -112,18 +112,19 @@ button { font-family: inherit; }
   position: relative;
   width: 100%;
   max-width: 460px;
-  aspect-ratio: 400 / 700;
+  aspect-ratio: 768 / 1376;
   margin: 4px auto 30px;
   border-radius: 32px;
   overflow: hidden;
   box-shadow: 0 12px 0 rgba(0,0,0,0.15);
 }
 
-.island-svg {
+.island-bg {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
+  object-fit: cover;
   display: block;
 }
 
