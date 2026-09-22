@@ -268,6 +268,13 @@ const WORLDS = [
   },
 ];
 
+// Hand-placed spots on the island illustration's 400x700 viewBox, one per world.
+const ISLAND_POSITIONS = {
+  addsub: { x: 116, y: 572 },
+  shapes: { x: 258, y: 372 },
+  patterns: { x: 150, y: 156 },
+};
+
 const QUESTIONS_PER_LEVEL = 6;
 
 /* ---------- Progress persistence ---------- */
@@ -348,31 +355,188 @@ function render() {
   else if (state.screen === 'complete') renderComplete();
 }
 
+/* ---------- Island illustration ---------- */
+
+function treeSVG(x, y, scale = 1, hue = 140) {
+  return `
+    <g transform="translate(${x},${y}) scale(${scale})">
+      <rect x="-3" y="0" width="6" height="16" rx="2" fill="#8a5a34"/>
+      <circle cx="0" cy="-10" r="15" fill="hsl(${hue},45%,42%)"/>
+      <circle cx="-10" cy="-2" r="11" fill="hsl(${hue},45%,46%)"/>
+      <circle cx="10" cy="-2" r="11" fill="hsl(${hue},45%,46%)"/>
+    </g>`;
+}
+
+function crystalCluster(x, y, scale = 1) {
+  const c = CRYSTAL_COLORS;
+  return `
+    <g transform="translate(${x},${y}) scale(${scale})">
+      <polygon points="0,-26 9,0 0,7 -9,0" fill="${c[1]}"/>
+      <polygon points="16,-12 23,4 16,11 9,4" fill="${c[3]}"/>
+      <polygon points="-16,-8 -9,6 -16,13 -23,6" fill="${c[0]}"/>
+    </g>`;
+}
+
+function cloudSVG(x, y, scale = 1, opacity = 0.9) {
+  return `
+    <g transform="translate(${x},${y}) scale(${scale})" opacity="${opacity}">
+      <ellipse cx="0" cy="0" rx="28" ry="15" fill="#ffffff"/>
+      <ellipse cx="-19" cy="5" rx="17" ry="11" fill="#ffffff"/>
+      <ellipse cx="19" cy="5" rx="19" ry="12" fill="#ffffff"/>
+    </g>`;
+}
+
+function critter(emoji, x, y, size = 22, opacity = 1) {
+  return `<text x="${x}" y="${y}" font-size="${size}" text-anchor="middle" opacity="${opacity}">${emoji}</text>`;
+}
+
+function buildIslandSVG() {
+  return `
+<svg class="island-svg" viewBox="0 0 400 700" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="seaGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#b7ecf2"/>
+      <stop offset="100%" stop-color="#2f8fd1"/>
+    </linearGradient>
+    <linearGradient id="islandGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#bce89a"/>
+      <stop offset="100%" stop-color="#6fae52"/>
+    </linearGradient>
+    <linearGradient id="mountainGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#d9c9f5"/>
+      <stop offset="100%" stop-color="#9a7fc4"/>
+    </linearGradient>
+    <radialGradient id="caveGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#f3d9ff"/>
+      <stop offset="100%" stop-color="#5c3d82"/>
+    </radialGradient>
+  </defs>
+
+  <rect x="0" y="0" width="400" height="700" fill="url(#seaGrad)"/>
+  <path d="M0,60 Q40,50 80,60 T160,60 T240,60 T320,60 T400,58" stroke="#ffffff" stroke-width="2.5" fill="none" opacity="0.5"/>
+  <path d="M0,650 Q40,642 80,650 T160,650 T240,650 T320,650 T400,648" stroke="#ffffff" stroke-width="2.5" fill="none" opacity="0.4"/>
+
+  ${cloudSVG(60, 45, 1, 0.9)}
+  ${cloudSVG(330, 70, 0.8, 0.85)}
+  ${cloudSVG(210, 30, 0.65, 0.8)}
+
+  <!-- island landmass -->
+  <path d="M70,430 C45,350 75,230 135,165 C168,128 222,100 262,118
+           C308,138 322,185 312,232 C358,262 378,320 352,378
+           C390,418 380,500 332,558 C300,606 252,646 192,658
+           C132,670 82,642 62,582 C34,522 46,470 70,430 Z"
+        fill="#f5e2ae" stroke="#f5e2ae" stroke-width="22" stroke-linejoin="round"/>
+  <path d="M70,430 C45,350 75,230 135,165 C168,128 222,100 262,118
+           C308,138 322,185 312,232 C358,262 378,320 352,378
+           C390,418 380,500 332,558 C300,606 252,646 192,658
+           C132,670 82,642 62,582 C34,522 46,470 70,430 Z"
+        fill="url(#islandGrad)"/>
+
+  <!-- river: from the highland meadow down through the valley to the sea -->
+  <path d="M168,230 C148,284 196,318 176,368 C156,420 214,458 196,516
+           C178,574 258,588 300,640 C316,658 334,652 348,648"
+        fill="none" stroke="#3fa7f2" stroke-width="13" stroke-linecap="round" opacity="0.85"/>
+  <path d="M168,230 C148,284 196,318 176,368 C156,420 214,458 196,516
+           C178,574 258,588 300,640 C316,658 334,652 348,648"
+        fill="none" stroke="#bfe9ff" stroke-width="4" stroke-linecap="round" opacity="0.8"/>
+
+  <!-- Enchanted Meadow (top) -->
+  <ellipse cx="150" cy="185" rx="95" ry="52" fill="#d7f2a3" opacity="0.9"/>
+  <ellipse cx="95" cy="210" rx="55" ry="30" fill="#e7f7c2" opacity="0.8"/>
+  ${treeSVG(70, 150, 1.1, 140)}
+  ${treeSVG(215, 140, 0.9, 150)}
+  ${treeSVG(210, 205, 1, 130)}
+  ${critter('🌸', 120, 175, 18)}
+  ${critter('🌼', 165, 200, 16)}
+  ${critter('🌸', 185, 155, 15)}
+  ${critter('🦋', 100, 130, 20)}
+  ${critter('🦊', 235, 175, 22)}
+  ${critter('✨', 145, 120, 14, 0.9)}
+
+  <!-- Crystal Caves (middle) -->
+  <polygon points="215,395 250,318 285,395" fill="url(#mountainGrad)"/>
+  <polygon points="235,395 268,335 300,395" fill="url(#mountainGrad)"/>
+  <polygon points="240,340 250,318 262,342" fill="#ffffff" opacity="0.9"/>
+  <polygon points="258,354 268,335 280,357" fill="#ffffff" opacity="0.85"/>
+  <ellipse cx="258" cy="398" rx="30" ry="22" fill="url(#caveGlow)"/>
+  <ellipse cx="258" cy="402" rx="20" ry="14" fill="#2c1f42"/>
+  ${crystalCluster(212, 400, 0.8)}
+  ${crystalCluster(302, 392, 0.75)}
+  ${critter('🐲', 258, 396, 22)}
+  ${critter('🐿️', 195, 415, 20)}
+  ${critter('✨', 285, 350, 13, 0.9)}
+
+  <!-- Rainbow Ridge (bottom) -->
+  <ellipse cx="118" cy="600" rx="90" ry="48" fill="#f5b8c9"/>
+  <ellipse cx="118" cy="600" rx="90" ry="48" fill="#ffffff" opacity="0.15"/>
+  <path d="M55,585 A70,70 0 0 1 195,585" fill="none" stroke="#ff6b6b" stroke-width="7"/>
+  <path d="M62,590 A62,62 0 0 1 188,590" fill="none" stroke="#ffb648" stroke-width="7"/>
+  <path d="M69,595 A54,54 0 0 1 181,595" fill="none" stroke="#ffe066" stroke-width="7"/>
+  <path d="M76,600 A46,46 0 0 1 174,600" fill="none" stroke="#5fd68a" stroke-width="7"/>
+  <path d="M83,605 A38,38 0 0 1 167,605" fill="none" stroke="#5ab8f2" stroke-width="7"/>
+  ${critter('🐚', 75, 622, 18)}
+  ${critter('🐦', 165, 570, 20)}
+  ${critter('🐢', 155, 630, 20)}
+  ${critter('✨', 118, 560, 14, 0.9)}
+
+  <!-- winding quest trail -->
+  <path d="M200,660 C165,625 140,605 116,572 C158,515 205,470 258,372
+           C232,300 190,230 150,156"
+        fill="none" stroke="#fffdfb" stroke-width="6" stroke-linecap="round"
+        stroke-dasharray="2 14" opacity="0.95"/>
+
+  <!-- starting dock -->
+  <g transform="translate(200,662)">
+    <rect x="-5" y="-24" width="3" height="24" fill="#8a5a34"/>
+    <path d="M-2,-24 L20,-17 L-2,-10 Z" fill="#fff6e0"/>
+  </g>
+</svg>`;
+}
+
+function getRiderWorldId() {
+  let lastUnlocked = WORLDS[0].id;
+  for (let i = 0; i < WORLDS.length; i++) {
+    const w = WORLDS[i];
+    if (!isWorldUnlocked(i)) break;
+    lastUnlocked = w.id;
+    const mastered = w.levels.every((l) => getLevelStars(w.id, l.id) === 3);
+    if (!mastered) return w.id;
+  }
+  return lastUnlocked;
+}
+
 function renderMap() {
-  const nodes = WORLDS.map((w, i) => {
+  const riderId = getRiderWorldId();
+  const riderPos = ISLAND_POSITIONS[riderId];
+
+  const pins = WORLDS.map((w, i) => {
     const unlocked = isWorldUnlocked(i);
     const stars = w.levels.reduce((sum, l) => sum + getLevelStars(w.id, l.id), 0);
     const maxStars = w.levels.length * 3;
+    const pos = ISLAND_POSITIONS[w.id];
     return `
-      <button class="world-node" data-locked="${!unlocked}" data-world="${w.id}">
-        <div class="emoji-badge" style="background:${w.color}22">${w.emoji}</div>
-        <div class="info">
-          <h3>${w.name}</h3>
-          <p>${w.desc}</p>
-          <div class="stars-row">${starsMarkup(Math.min(3, Math.round((stars / maxStars) * 3)))}</div>
-        </div>
-        ${unlocked ? '' : '<div class="lock">🔒</div>'}
+      <button class="quest-pin" data-locked="${!unlocked}" data-world="${w.id}"
+        style="left:${((pos.x / 400) * 100).toFixed(2)}%; top:${((pos.y / 700) * 100).toFixed(2)}%; --pin-color:${w.color}">
+        <div class="badge">${unlocked ? w.emoji : '🔒'}</div>
+        <div class="pin-label">${w.name}</div>
+        <div class="pin-stars stars-row">${starsMarkup(Math.min(3, Math.round((stars / maxStars) * 3)))}</div>
       </button>`;
   }).join('');
+
+  const rider = `<div class="unicorn-rider" style="left:${((riderPos.x / 400) * 100).toFixed(2)}%; top:${((riderPos.y / 700) * 100).toFixed(2)}%;">🦄</div>`;
 
   app.innerHTML = `
     ${topbar()}
     <div class="screen">
       <h2 class="section-heading">Explore Unicorn Island! ✨</h2>
-      <div class="map-path">${nodes}</div>
+      <div class="island-wrap">
+        ${buildIslandSVG()}
+        ${pins}
+        ${rider}
+      </div>
     </div>`;
 
-  app.querySelectorAll('.world-node').forEach((btn) => {
+  app.querySelectorAll('.quest-pin').forEach((btn) => {
     btn.addEventListener('click', () => {
       if (btn.dataset.locked === 'true') return;
       state = { screen: 'levels', worldId: btn.dataset.world };

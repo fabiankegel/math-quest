@@ -107,52 +107,82 @@ button { font-family: inherit; }
   align-items: center;
 }
 
-/* ---------- World map ---------- */
-.map-path {
+/* ---------- Island map ---------- */
+.island-wrap {
+  position: relative;
   width: 100%;
+  max-width: 460px;
+  aspect-ratio: 400 / 700;
+  margin: 4px auto 30px;
+  border-radius: 32px;
+  overflow: hidden;
+  box-shadow: 0 12px 0 rgba(0,0,0,0.15);
+}
+
+.island-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.quest-pin {
+  position: absolute;
+  transform: translate(-50%, -50%);
   display: flex;
   flex-direction: column;
-  gap: 22px;
-  padding: 10px 6px 40px;
-}
-
-.world-node {
-  display: flex;
   align-items: center;
-  gap: 16px;
-  background: var(--card);
-  border-radius: 26px;
-  padding: 16px;
-  box-shadow: 0 8px 0 rgba(0,0,0,0.12);
-  cursor: pointer;
+  gap: 4px;
   border: none;
-  text-align: left;
-  width: 100%;
+  background: none;
+  padding: 0;
+  cursor: pointer;
 }
-.world-node:active { transform: translateY(4px); box-shadow: 0 4px 0 rgba(0,0,0,0.12); }
-.world-node[data-locked="true"] { opacity: 0.55; filter: grayscale(0.5); cursor: default; }
-.world-node[data-locked="true"]:active { transform: none; box-shadow: 0 8px 0 rgba(0,0,0,0.12); }
+.quest-pin:active .badge { transform: scale(0.92); }
+.quest-pin[data-locked="true"] { cursor: default; }
+.quest-pin[data-locked="true"] .badge { filter: grayscale(0.5); opacity: 0.7; }
 
-.world-node .emoji-badge {
-  font-size: 42px;
-  width: 76px;
-  height: 76px;
-  min-width: 76px;
-  border-radius: 20px;
+.quest-pin .badge {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  background: #fffdfb;
+  border: 4px solid var(--pin-color, var(--purple));
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 30px;
+  box-shadow: 0 6px 0 rgba(0,0,0,0.18);
 }
 
-.world-node .info { flex: 1; }
-.world-node .info h3 { margin: 0 0 4px; font-size: 20px; color: var(--ink); }
-.world-node .info p { margin: 0; font-size: 14px; color: var(--ink-soft); }
+.quest-pin .pin-label {
+  background: rgba(255,255,255,0.94);
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--ink);
+  white-space: nowrap;
+  box-shadow: 0 2px 0 rgba(0,0,0,0.08);
+}
 
-.world-node .stars-row { display: flex; gap: 2px; margin-top: 6px; }
-.world-node .stars-row .star { font-size: 16px; color: var(--star-off); }
-.world-node .stars-row .star.on { color: var(--yellow); }
+.quest-pin .pin-stars { display: flex; gap: 1px; }
+.quest-pin .pin-stars .star { font-size: 11px; color: var(--star-off); }
+.quest-pin .pin-stars .star.on { color: var(--yellow); }
 
-.world-node .lock { font-size: 26px; color: var(--ink-soft); }
+.unicorn-rider {
+  position: absolute;
+  transform: translate(-50%, -260%);
+  font-size: 34px;
+  filter: drop-shadow(0 4px 3px rgba(0,0,0,0.3));
+  animation: riderFloat 2.2s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+@keyframes riderFloat {
+  from { transform: translate(-50%, -260%) rotate(-5deg); }
+  to   { transform: translate(-50%, -285%) rotate(5deg); }
+}
 
 /* ---------- Level select ---------- */
 .level-grid {
