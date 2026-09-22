@@ -1,9 +1,9 @@
 {
-  "name": "Math Quest",
-  "short_name": "Math Quest",
+  "name": "Unicorn Island",
+  "short_name": "Unicorn Island",
   "display": "standalone",
   "start_url": "index.html",
-  "background_color": "#5b3fd6",
-  "theme_color": "#5b3fd6",
+  "background_color": "#ffe3f0",
+  "theme_color": "#b48ce0",
   "orientation": "portrait"
 }

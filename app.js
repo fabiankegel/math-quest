@@ -52,9 +52,8 @@ function numberPool(center, min, max, spread = 5) {
 }
 
 const EMOJI_SET = ['🍎', '🍊', '🍇', '⭐', '🐶', '🐱', '🚗', '🎈', '🍪', '🌸', '🍓', '🐰', '🐠', '🦋', '🎁'];
-function randomEmoji() {
-  return EMOJI_SET[rand(0, EMOJI_SET.length - 1)];
-}
+const SHORE_EMOJI = ['🐚', '⭐', '🐠', '🦀', '🐬', '🫧', '🐙', '🌊'];
+const RIDGE_EMOJI = ['💎', '🍭', '🍬', '🌟', '🎈', '🧁', '🍓', '🎁'];
 
 /* ---------- Shape drawing (inline SVG) ---------- */
 function regularPolygonPoints(cx, cy, r, sides, rotationDeg = -90) {
@@ -76,17 +75,17 @@ function starPoints(cx, cy, outerR, innerR, points = 5) {
   return pts.join(' ');
 }
 
-const SHAPE_FILL = '#3fa7f2';
+const CRYSTAL_COLORS = ['#b48ce0', '#8b5fbf', '#c9a7f5', '#7fd8d1', '#ff9fc2'];
 const SHAPE_DEFS = {
-  circle: () => `<circle cx="70" cy="70" r="55" fill="${SHAPE_FILL}"/>`,
-  square: () => `<rect x="18" y="18" width="104" height="104" rx="10" fill="${SHAPE_FILL}"/>`,
-  rectangle: () => `<rect x="6" y="35" width="128" height="70" rx="10" fill="${SHAPE_FILL}"/>`,
-  triangle: () => `<polygon points="${regularPolygonPoints(70, 74, 62, 3)}" fill="${SHAPE_FILL}"/>`,
-  pentagon: () => `<polygon points="${regularPolygonPoints(70, 70, 58, 5)}" fill="${SHAPE_FILL}"/>`,
-  hexagon: () => `<polygon points="${regularPolygonPoints(70, 70, 58, 6)}" fill="${SHAPE_FILL}"/>`,
-  star: () => `<polygon points="${starPoints(70, 70, 58, 26, 5)}" fill="${SHAPE_FILL}"/>`,
-  oval: () => `<ellipse cx="70" cy="70" rx="60" ry="40" fill="${SHAPE_FILL}"/>`,
-  diamond: () => `<polygon points="${regularPolygonPoints(70, 70, 58, 4)}" fill="${SHAPE_FILL}"/>`,
+  circle: (fill) => `<circle cx="70" cy="70" r="55" fill="${fill}"/>`,
+  square: (fill) => `<rect x="18" y="18" width="104" height="104" rx="10" fill="${fill}"/>`,
+  rectangle: (fill) => `<rect x="6" y="35" width="128" height="70" rx="10" fill="${fill}"/>`,
+  triangle: (fill) => `<polygon points="${regularPolygonPoints(70, 74, 62, 3)}" fill="${fill}"/>`,
+  pentagon: (fill) => `<polygon points="${regularPolygonPoints(70, 70, 58, 5)}" fill="${fill}"/>`,
+  hexagon: (fill) => `<polygon points="${regularPolygonPoints(70, 70, 58, 6)}" fill="${fill}"/>`,
+  star: (fill) => `<polygon points="${starPoints(70, 70, 58, 26, 5)}" fill="${fill}"/>`,
+  oval: (fill) => `<ellipse cx="70" cy="70" rx="60" ry="40" fill="${fill}"/>`,
+  diamond: (fill) => `<polygon points="${regularPolygonPoints(70, 70, 58, 4)}" fill="${fill}"/>`,
 };
 const SHAPE_SIDES = { triangle: 3, square: 4, rectangle: 4, pentagon: 5, hexagon: 6 };
 const SHAPE_LABELS = {
@@ -95,15 +94,16 @@ const SHAPE_LABELS = {
 };
 
 function shapeSVG(name) {
-  return `<svg width="140" height="140" viewBox="0 0 140 140">${SHAPE_DEFS[name]()}</svg>`;
+  const fill = pick(CRYSTAL_COLORS);
+  return `<svg width="140" height="140" viewBox="0 0 140 140">${SHAPE_DEFS[name](fill)}</svg>`;
 }
 
 /* ---------- Question generators ---------- */
 
-function genCounting(minN, maxN) {
+function genCounting(minN, maxN, emojiPool = EMOJI_SET) {
   return () => {
     const n = rand(minN, maxN);
-    const emoji = randomEmoji();
+    const emoji = pick(emojiPool);
     const { options, correctIndex } = buildOptions(n, numberPool(n, 1, maxN + 2, 3));
     return {
       prompt: 'How many are there?',
@@ -146,12 +146,12 @@ function genMoreLess() {
   };
 }
 
-function genAddition(maxSum) {
+function genAddition(maxSum, emojiPool = EMOJI_SET) {
   return () => {
     const a = rand(1, Math.min(9, maxSum - 1));
     const b = rand(1, maxSum - a);
     const correct = a + b;
-    const emoji = randomEmoji();
+    const emoji = pick(emojiPool);
     const { options, correctIndex } = buildOptions(correct, numberPool(correct, 0, maxSum + 2, 3));
     return {
       prompt: `${a} + ${b} = ?`,
@@ -162,12 +162,12 @@ function genAddition(maxSum) {
   };
 }
 
-function genSubtraction(maxStart) {
+function genSubtraction(maxStart, emojiPool = EMOJI_SET) {
   return () => {
     const a = rand(2, maxStart);
     const b = rand(1, a);
     const correct = a - b;
-    const emoji = randomEmoji();
+    const emoji = pick(emojiPool);
     const kept = `<span>${emoji.repeat(a - b)}</span>`;
     const crossed = b > 0 ? `<span class="crossed">${emoji.repeat(b)}</span>` : '';
     const { options, correctIndex } = buildOptions(correct, numberPool(correct, 0, maxStart, 3));
@@ -180,9 +180,9 @@ function genSubtraction(maxStart) {
   };
 }
 
-function genMixedAddSub(max) {
-  const add = genAddition(max);
-  const sub = genSubtraction(max);
+function genMixedAddSub(max, emojiPool = EMOJI_SET) {
+  const add = genAddition(max, emojiPool);
+  const sub = genSubtraction(max, emojiPool);
   return () => (Math.random() < 0.5 ? add() : sub());
 }
 
@@ -215,7 +215,7 @@ function genShapeSides() {
   };
 }
 
-const PATTERN_ICONS = ['🔴', '🔵', '🟡', '🟢', '🟣', '🟠'];
+const PATTERN_ICONS = ['🌸', '🦋', '🌼', '🍄', '🌿', '🐝'];
 
 function genPatternAB() {
   return () => {
@@ -274,53 +274,57 @@ function genNumberPattern() {
 const WORLDS = [
   {
     id: 'counting',
-    name: 'Counting Cove',
-    emoji: '🏝️',
-    color: '#3fa7f2',
-    desc: 'Counting & numbers',
+    name: 'Shimmer Shore',
+    emoji: '🐚',
+    color: '#4fd1c5',
+    desc: 'Count seashells with Shimmer',
+    companion: { name: 'Shimmer', emoji: '🦄' },
     levels: [
-      { id: 'c1', name: 'Count to 10', gen: genCounting(1, 10) },
-      { id: 'c2', name: 'Count to 20', gen: genCounting(11, 20) },
-      { id: 'c3', name: 'Before & After', gen: genBeforeAfter() },
-      { id: 'c4', name: 'More or Less', gen: genMoreLess() },
+      { id: 'c1', name: 'Sparkly Shells (to 10)', gen: genCounting(1, 10, SHORE_EMOJI) },
+      { id: 'c2', name: 'Sparkly Shells (to 20)', gen: genCounting(11, 20, SHORE_EMOJI) },
+      { id: 'c3', name: 'Tide Pool Numbers', gen: genBeforeAfter() },
+      { id: 'c4', name: 'Bigger Wave, Smaller Wave', gen: genMoreLess() },
     ],
   },
   {
     id: 'addsub',
-    name: 'Add & Subtract Summit',
-    emoji: '⛰️',
-    color: '#ff5c8a',
-    desc: 'Adding & taking away',
+    name: 'Rainbow Ridge',
+    emoji: '🌈',
+    color: '#ff8fab',
+    desc: 'Add & subtract gems with Comet',
+    companion: { name: 'Comet', emoji: '🦄' },
     levels: [
-      { id: 'a1', name: 'Adding to 10', gen: genAddition(10) },
-      { id: 'a2', name: 'Adding to 20', gen: genAddition(20) },
-      { id: 'a3', name: 'Subtracting to 10', gen: genSubtraction(10) },
-      { id: 'a4', name: 'Subtracting to 20', gen: genSubtraction(20) },
-      { id: 'a5', name: 'Mix It Up', gen: genMixedAddSub(20) },
+      { id: 'a1', name: 'Gem Gathering (to 10)', gen: genAddition(10, RIDGE_EMOJI) },
+      { id: 'a2', name: 'Gem Gathering (to 20)', gen: genAddition(20, RIDGE_EMOJI) },
+      { id: 'a3', name: 'Sharing Treasure (to 10)', gen: genSubtraction(10, RIDGE_EMOJI) },
+      { id: 'a4', name: 'Sharing Treasure (to 20)', gen: genSubtraction(20, RIDGE_EMOJI) },
+      { id: 'a5', name: 'Rainbow Mix-Up', gen: genMixedAddSub(20, RIDGE_EMOJI) },
     ],
   },
   {
     id: 'shapes',
-    name: 'Shape Shore',
-    emoji: '🔷',
-    color: '#34c98f',
-    desc: '2D shapes',
+    name: 'Crystal Caves',
+    emoji: '💎',
+    color: '#b48ce0',
+    desc: 'Discover shapes with Crystal',
+    companion: { name: 'Crystal', emoji: '🦄' },
     levels: [
-      { id: 's1', name: 'Name That Shape', gen: genShapeName(['circle', 'square', 'triangle', 'rectangle']) },
-      { id: 's2', name: 'Tricky Shapes', gen: genShapeName(['pentagon', 'hexagon', 'star', 'oval', 'diamond']) },
-      { id: 's3', name: 'Count the Sides', gen: genShapeSides() },
+      { id: 's1', name: 'Crystal Shapes', gen: genShapeName(['circle', 'square', 'triangle', 'rectangle']) },
+      { id: 's2', name: 'Rare Crystals', gen: genShapeName(['pentagon', 'hexagon', 'star', 'oval', 'diamond']) },
+      { id: 's3', name: 'Count the Facets', gen: genShapeSides() },
     ],
   },
   {
     id: 'patterns',
-    name: 'Pattern Path',
-    emoji: '🌈',
-    color: '#ffc23c',
-    desc: 'Patterns & sequences',
+    name: 'Enchanted Meadow',
+    emoji: '🌸',
+    color: '#ffd166',
+    desc: 'Spot patterns with Blossom',
+    companion: { name: 'Blossom', emoji: '🦄' },
     levels: [
-      { id: 'p1', name: 'AB Patterns', gen: genPatternAB() },
-      { id: 'p2', name: 'ABC Patterns', gen: genPatternABC() },
-      { id: 'p3', name: 'Number Patterns', gen: genNumberPattern() },
+      { id: 'p1', name: 'Flower Trail (AB)', gen: genPatternAB() },
+      { id: 'p2', name: 'Flower Trail (ABC)', gen: genPatternABC() },
+      { id: 'p3', name: 'Magic Number Path', gen: genNumberPattern() },
     ],
   },
 ];
@@ -393,7 +397,7 @@ function starsMarkup(count, max = 3, cls = 'star') {
 function topbar(showStars = true) {
   return `
     <div class="topbar">
-      <div class="title">🧭 Math Quest</div>
+      <div class="title">🦄 Unicorn Island</div>
       ${showStars ? `<div class="star-total">⭐ ${totalStars()}</div>` : '<div></div>'}
     </div>`;
 }
@@ -425,7 +429,7 @@ function renderMap() {
   app.innerHTML = `
     ${topbar()}
     <div class="screen">
-      <h2 class="section-heading">Choose your adventure!</h2>
+      <h2 class="section-heading">Explore Unicorn Island! ✨</h2>
       <div class="map-path">${nodes}</div>
     </div>`;
 
@@ -456,6 +460,7 @@ function renderLevels() {
     <div class="screen">
       <button class="back-btn">⬅ Map</button>
       <h2 class="section-heading">${world.emoji} ${world.name}</h2>
+      <p class="world-greeting">${world.companion.emoji} ${world.companion.name} is ready to play!</p>
       <div class="level-grid">${nodes}</div>
     </div>`;
 
@@ -531,7 +536,7 @@ function renderQuiz() {
         btn.classList.add('correct');
         solved = true;
         app.querySelectorAll('.opt-btn').forEach((b) => (b.disabled = true));
-        feedback.textContent = pick(['Great job! 🎉', 'Awesome! ⭐', 'You got it! 🙌', 'Super! ✨']);
+        feedback.textContent = pick(['Great job! 🦄✨', 'Awesome! 🌈', 'You got it! 🙌', 'Magical! ✨']);
         feedback.className = 'feedback-banner good';
         nextBtn.style.display = 'inline-block';
       } else {
@@ -583,13 +588,20 @@ function finishLevel() {
 
 function renderComplete() {
   const { world, level, stars } = state;
+  const cheer =
+    stars === 3
+      ? `${world.companion.name} ${world.companion.emoji} is doing a happy dance for you!`
+      : stars === 2
+      ? `${world.companion.name} ${world.companion.emoji} says great effort!`
+      : `${world.companion.name} ${world.companion.emoji} says keep practicing, you'll get there!`;
   app.innerHTML = `
     ${topbar()}
     <div class="screen">
       <div class="complete-card">
-        <h2>${stars === 3 ? 'Perfect!' : stars === 2 ? 'Well done!' : 'Level complete!'}</h2>
+        <h2>${stars === 3 ? '✨ Magical! ✨' : stars === 2 ? 'Sparkling!' : 'Nice Try!'}</h2>
         <div class="complete-stars">${starsMarkup(stars)}</div>
         <p>${level.name} — ${world.name}</p>
+        <p>${cheer}</p>
         <div class="complete-actions">
           <button class="pill-btn primary" id="playAgain">Play Again</button>
           <button class="pill-btn secondary" id="toLevels">Levels</button>
@@ -610,7 +622,7 @@ function renderComplete() {
 }
 
 function spawnConfetti() {
-  const colors = ['#ff5c8a', '#ffc23c', '#34c98f', '#3fa7f2', '#5b3fd6'];
+  const colors = ['#ff8fab', '#ffd166', '#b8f2c9', '#a0c4ff', '#c8b6ff', '#4fd1c5'];
   for (let i = 0; i < 40; i++) {
     const piece = document.createElement('div');
     piece.className = 'confetti-piece';
