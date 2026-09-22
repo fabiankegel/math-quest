@@ -229,6 +229,7 @@ const WORLDS = [
     id: 'addsub',
     name: 'Rainbow Ridge',
     emoji: '🌈',
+    icon: 'assets/badge-addsub.png',
     color: '#ff8fab',
     desc: 'Add & subtract gems with Comet',
     companion: { name: 'Comet', emoji: '🦄' },
@@ -244,6 +245,7 @@ const WORLDS = [
     id: 'shapes',
     name: 'Crystal Caves',
     emoji: '💎',
+    icon: 'assets/badge-shapes.png',
     color: '#b48ce0',
     desc: 'Discover shapes with Crystal',
     companion: { name: 'Crystal', emoji: '🦄' },
@@ -257,6 +259,7 @@ const WORLDS = [
     id: 'patterns',
     name: 'Enchanted Meadow',
     emoji: '🌸',
+    icon: 'assets/badge-patterns.png',
     color: '#ffd166',
     desc: 'Spot patterns with Blossom',
     companion: { name: 'Blossom', emoji: '🦄' },
@@ -381,7 +384,7 @@ function renderMap() {
     return `
       <button class="quest-pin" data-locked="${!unlocked}" data-world="${w.id}"
         style="left:${pos.x}%; top:${pos.y}%; --pin-color:${w.color}">
-        <div class="badge">${unlocked ? w.emoji : '🔒'}</div>
+        <div class="badge">${unlocked ? `<img src="${w.icon}" alt="${w.name}">` : '🔒'}</div>
         <div class="pin-label">${w.name}</div>
         <div class="pin-stars stars-row">${starsMarkup(Math.min(3, Math.round((stars / maxStars) * 3)))}</div>
       </button>`;
@@ -426,8 +429,13 @@ function renderLevels() {
     ${topbar()}
     <div class="screen">
       <button class="back-btn">⬅ Map</button>
-      <h2 class="section-heading">${world.emoji} ${world.name}</h2>
-      <p class="world-greeting">${world.companion.emoji} ${world.companion.name} is ready to play!</p>
+      <div class="world-crest-row">
+        <div class="world-crest"><img src="${world.icon}" alt="${world.name}"></div>
+        <div class="world-crest-text">
+          <h2 class="section-heading">${world.name}</h2>
+          <p class="world-greeting">${world.companion.emoji} ${world.companion.name} is ready to play!</p>
+        </div>
+      </div>
       <div class="level-grid">${nodes}</div>
     </div>`;
 
