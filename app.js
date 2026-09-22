@@ -52,7 +52,6 @@ function numberPool(center, min, max, spread = 5) {
 }
 
 const EMOJI_SET = ['🍎', '🍊', '🍇', '⭐', '🐶', '🐱', '🚗', '🎈', '🍪', '🌸', '🍓', '🐰', '🐠', '🦋', '🎁'];
-const SHORE_EMOJI = ['🐚', '⭐', '🐠', '🦀', '🐬', '🫧', '🐙', '🌊'];
 const RIDGE_EMOJI = ['💎', '🍭', '🍬', '🌟', '🎈', '🧁', '🍓', '🎁'];
 
 /* ---------- Shape drawing (inline SVG) ---------- */
@@ -99,52 +98,6 @@ function shapeSVG(name) {
 }
 
 /* ---------- Question generators ---------- */
-
-function genCounting(minN, maxN, emojiPool = EMOJI_SET) {
-  return () => {
-    const n = rand(minN, maxN);
-    const emoji = pick(emojiPool);
-    const { options, correctIndex } = buildOptions(n, numberPool(n, 1, maxN + 2, 3));
-    return {
-      prompt: 'How many are there?',
-      visual: `<span>${emoji.repeat(n)}</span>`,
-      options: options.map(String),
-      correctIndex,
-    };
-  };
-}
-
-function genBeforeAfter() {
-  return () => {
-    const isAfter = Math.random() < 0.5;
-    const n = isAfter ? rand(1, 19) : rand(2, 20);
-    const correct = isAfter ? n + 1 : n - 1;
-    const { options, correctIndex } = buildOptions(correct, numberPool(correct, 0, 21, 3));
-    return {
-      prompt: isAfter ? `What number comes right after ${n}?` : `What number comes right before ${n}?`,
-      visual: `<span style="font-size:56px;font-weight:800;">${n}</span>`,
-      options: options.map(String),
-      correctIndex,
-    };
-  };
-}
-
-function genMoreLess() {
-  return () => {
-    let a = rand(1, 20);
-    let b = rand(1, 20);
-    while (b === a) b = rand(1, 20);
-    const wantBigger = Math.random() < 0.5;
-    const correct = wantBigger ? Math.max(a, b) : Math.min(a, b);
-    const options = shuffle([a, b]);
-    return {
-      prompt: wantBigger ? 'Which number is bigger?' : 'Which number is smaller?',
-      visual: '',
-      options: options.map(String),
-      correctIndex: options.indexOf(correct),
-    };
-  };
-}
 
 function genAddition(maxSum, emojiPool = EMOJI_SET) {
   return () => {
@@ -272,20 +225,6 @@ function genNumberPattern() {
 /* ---------- World / level data ---------- */
 
 const WORLDS = [
-  {
-    id: 'counting',
-    name: 'Shimmer Shore',
-    emoji: '🐚',
-    color: '#4fd1c5',
-    desc: 'Count seashells with Shimmer',
-    companion: { name: 'Shimmer', emoji: '🦄' },
-    levels: [
-      { id: 'c1', name: 'Sparkly Shells (to 10)', gen: genCounting(1, 10, SHORE_EMOJI) },
-      { id: 'c2', name: 'Sparkly Shells (to 20)', gen: genCounting(11, 20, SHORE_EMOJI) },
-      { id: 'c3', name: 'Tide Pool Numbers', gen: genBeforeAfter() },
-      { id: 'c4', name: 'Bigger Wave, Smaller Wave', gen: genMoreLess() },
-    ],
-  },
   {
     id: 'addsub',
     name: 'Rainbow Ridge',
