@@ -54,6 +54,25 @@ function numberPool(center, min, max, spread = 5) {
 const EMOJI_SET = ['🍎', '🍊', '🍇', '⭐', '🐶', '🐱', '🚗', '🎈', '🍪', '🌸', '🍓', '🐰', '🐠', '🦋', '🎁'];
 const RIDGE_EMOJI = ['💎', '🍭', '🍬', '🌟', '🎈', '🧁', '🍓', '🎁'];
 
+/* ---------- Difficulty / grade level ---------- */
+
+const GRADES = ['Prep', 'Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', 'Year 6'];
+const GRADE_KEY = 'mathquest_grade_v1';
+
+function getGrade() {
+  const v = parseInt(localStorage.getItem(GRADE_KEY), 10);
+  return Number.isInteger(v) && v >= 0 && v < GRADES.length ? v : 1;
+}
+
+function setGrade(i) {
+  localStorage.setItem(GRADE_KEY, String(i));
+}
+
+// Pick the entry matching the current grade from a 7-item (Prep..Year6) array.
+function gscale(arr) {
+  return arr[getGrade()];
+}
+
 /* ---------- Shape drawing (inline SVG) ---------- */
 function regularPolygonPoints(cx, cy, r, sides, rotationDeg = -90) {
   const pts = [];
@@ -99,69 +118,244 @@ function shapeSVG(name) {
 
 /* ---------- Question generators ---------- */
 
-function genAddition(maxSum, emojiPool = EMOJI_SET) {
+// Max sum/start for +/- by grade: Prep, Y1, Y2, Y3, Y4, Y5, Y6.
+const ADD_MAX_BY_GRADE = [5, 20, 100, 1000, 10000, 100000, 999999];
+
+function genAddition(emojiPool = EMOJI_SET) {
   return () => {
-    const a = rand(1, Math.min(9, maxSum - 1));
-    const b = rand(1, maxSum - a);
+    const maxSum = gscale(ADD_MAX_BY_GRADE);
+    const a = rand(1, Math.max(1, maxSum - 1));
+    const b = rand(1, Math.max(1, maxSum - a));
     const correct = a + b;
-    const emoji = pick(emojiPool);
-    const { options, correctIndex } = buildOptions(correct, numberPool(correct, 0, maxSum + 2, 3));
-    return {
-      prompt: `${a} + ${b} = ?`,
-      visual: `<span>${emoji.repeat(a)}</span> <span style="color:#ff5c8a">+</span> <span>${emoji.repeat(b)}</span>`,
-      options: options.map(String),
-      correctIndex,
-    };
+    const spread = Math.max(3, Math.round(maxSum * 0.08));
+    const { options, correctIndex } = buildOptions(correct, numberPool(correct, 0, correct + spread * 2, spread));
+    const visual =
+      maxSum <= 20
+        ? (() => {
+            const emoji = pick(emojiPool);
+            return `<span>${emoji.repeat(a)}</span> <span style="color:#ff5c8a">+</span> <span>${emoji.repeat(b)}</span>`;
+          })()
+        : `<span style="font-size:40px;font-weight:800;">${a} + ${b}</span>`;
+    return { prompt: `${a} + ${b} = ?`, visual, options: options.map(String), correctIndex };
   };
 }
 
-function genSubtraction(maxStart, emojiPool = EMOJI_SET) {
+function genSubtraction(emojiPool = EMOJI_SET) {
   return () => {
-    const a = rand(2, maxStart);
+    const maxStart = gscale(ADD_MAX_BY_GRADE);
+    const a = rand(2, Math.max(2, maxStart));
     const b = rand(1, a);
     const correct = a - b;
-    const emoji = pick(emojiPool);
-    const kept = `<span>${emoji.repeat(a - b)}</span>`;
-    const crossed = b > 0 ? `<span class="crossed">${emoji.repeat(b)}</span>` : '';
-    const { options, correctIndex } = buildOptions(correct, numberPool(correct, 0, maxStart, 3));
-    return {
-      prompt: `${a} - ${b} = ?`,
-      visual: `${kept}${crossed}`,
-      options: options.map(String),
-      correctIndex,
-    };
+    const spread = Math.max(3, Math.round(maxStart * 0.08));
+    const { options, correctIndex } = buildOptions(correct, numberPool(correct, 0, maxStart, spread));
+    const visual =
+      maxStart <= 20
+        ? (() => {
+            const emoji = pick(emojiPool);
+            const kept = `<span>${emoji.repeat(a - b)}</span>`;
+            const crossed = b > 0 ? `<span class="crossed">${emoji.repeat(b)}</span>` : '';
+            return `${kept}${crossed}`;
+          })()
+        : `<span style="font-size:40px;font-weight:800;">${a} − ${b}</span>`;
+    return { prompt: `${a} - ${b} = ?`, visual, options: options.map(String), correctIndex };
   };
 }
 
-function genMixedAddSub(max, emojiPool = EMOJI_SET) {
-  const add = genAddition(max, emojiPool);
-  const sub = genSubtraction(max, emojiPool);
-  return () => (Math.random() < 0.5 ? add() : sub());
+// Multiplication factor ranges by grade.
+const MUL_RANGE_BY_GRADE = [
+  { aMax: 2, bMax: 2 },
+  { aMax: 3, bMax: 3 },
+  { aMax: 5, bMax: 5 },
+  { aMax: 10, bMax: 10 },
+  { aMax: 12, bMax: 20 },
+  { aMin: 10, aMax: 99, bMax: 12 },
+  { aMin: 10, aMax: 99, bMin: 10, bMax: 99 },
+];
+
+function genMultiplication(emojiPool = EMOJI_SET) {
+  return () => {
+    const r = gscale(MUL_RANGE_BY_GRADE);
+    const a = rand(r.aMin || 1, r.aMax);
+    const b = rand(r.bMin || 1, r.bMax);
+    const correct = a * b;
+    const spread = Math.max(3, Math.round(correct * 0.15));
+    const { options, correctIndex } = buildOptions(correct, numberPool(correct, 0, correct + spread * 2, spread));
+    const visual =
+      a * b <= 30
+        ? `<span style="font-size:30px; line-height:1.5;">${Array.from({ length: a })
+            .map(() => pick(emojiPool).repeat(b))
+            .join('<br>')}</span>`
+        : `<span style="font-size:40px;font-weight:800;">${a} × ${b}</span>`;
+    return { prompt: `${a} × ${b} = ?`, visual, options: options.map(String), correctIndex };
+  };
 }
 
-function genShapeName(shapeList) {
+function genDivision(emojiPool = EMOJI_SET) {
   return () => {
-    const name = shapeList[rand(0, shapeList.length - 1)];
-    const pool = shapeList.filter((s) => s !== name).map((s) => SHAPE_LABELS[s]);
-    const { options, correctIndex } = buildOptions(SHAPE_LABELS[name], pool, Math.min(4, shapeList.length));
-    return {
-      prompt: 'What shape is this?',
-      visual: shapeSVG(name),
-      options,
-      correctIndex,
-    };
+    const r = gscale(MUL_RANGE_BY_GRADE);
+    const divisor = rand(Math.max(2, r.bMin || 1), Math.max(2, r.bMax));
+    const quotient = rand(r.aMin || 1, r.aMax);
+    const dividend = divisor * quotient;
+    const spread = Math.max(3, Math.round(quotient * 0.25));
+    const { options, correctIndex } = buildOptions(quotient, numberPool(quotient, 0, quotient + spread * 2, spread));
+    const visual =
+      dividend <= 30
+        ? `<span style="font-size:30px;">${pick(emojiPool).repeat(dividend)}</span><div style="font-size:15px;margin-top:6px;color:#7a6a99;">shared into ${divisor} equal groups</div>`
+        : `<span style="font-size:40px;font-weight:800;">${dividend} ÷ ${divisor}</span>`;
+    return { prompt: `${dividend} ÷ ${divisor} = ?`, visual, options: options.map(String), correctIndex };
+  };
+}
+
+function genMixedOps(emojiPool = EMOJI_SET) {
+  const gens = [genAddition(emojiPool), genSubtraction(emojiPool), genMultiplication(emojiPool), genDivision(emojiPool)];
+  return () => pick(gens)();
+}
+
+// 2D shape pool grows with grade.
+const SHAPE_POOL_BY_GRADE = [
+  ['circle', 'square', 'triangle'],
+  ['circle', 'square', 'triangle', 'rectangle'],
+  ['circle', 'square', 'triangle', 'rectangle', 'pentagon', 'hexagon'],
+  ['circle', 'square', 'triangle', 'rectangle', 'pentagon', 'hexagon', 'oval', 'diamond', 'star'],
+  ['circle', 'square', 'triangle', 'rectangle', 'pentagon', 'hexagon', 'oval', 'diamond', 'star'],
+  ['circle', 'square', 'triangle', 'rectangle', 'pentagon', 'hexagon', 'oval', 'diamond', 'star'],
+  ['circle', 'square', 'triangle', 'rectangle', 'pentagon', 'hexagon', 'oval', 'diamond', 'star'],
+];
+
+function genShapeName() {
+  return () => {
+    const pool = gscale(SHAPE_POOL_BY_GRADE);
+    const name = pool[rand(0, pool.length - 1)];
+    const opts = pool.filter((s) => s !== name).map((s) => SHAPE_LABELS[s]);
+    const { options, correctIndex } = buildOptions(SHAPE_LABELS[name], opts, Math.min(4, pool.length));
+    return { prompt: 'What shape is this?', visual: shapeSVG(name), options, correctIndex };
   };
 }
 
 function genShapeSides() {
-  const shapes = Object.keys(SHAPE_SIDES);
   return () => {
-    const name = shapes[rand(0, shapes.length - 1)];
+    const pool = gscale(SHAPE_POOL_BY_GRADE).filter((s) => SHAPE_SIDES[s]);
+    const name = pool[rand(0, pool.length - 1)];
     const correct = SHAPE_SIDES[name];
     const { options, correctIndex } = buildOptions(correct, [3, 4, 5, 6]);
+    return { prompt: 'How many sides does this shape have?', visual: shapeSVG(name), options: options.map(String), correctIndex };
+  };
+}
+
+// 3D shapes (simple pseudo-3D icons).
+const SHAPE3D_POOL_BY_GRADE = [
+  ['cube', 'sphere', 'cone'],
+  ['cube', 'sphere', 'cone'],
+  ['cube', 'sphere', 'cone', 'cylinder', 'pyramid'],
+  ['cube', 'sphere', 'cone', 'cylinder', 'pyramid'],
+  ['cube', 'sphere', 'cone', 'cylinder', 'pyramid'],
+  ['cube', 'sphere', 'cone', 'cylinder', 'pyramid'],
+  ['cube', 'sphere', 'cone', 'cylinder', 'pyramid'],
+];
+const SHAPE3D_LABELS = { cube: 'Cube', sphere: 'Sphere', cone: 'Cone', cylinder: 'Cylinder', pyramid: 'Pyramid' };
+const SHAPE3D_DEFS = {
+  cube: (fill) => `
+    <polygon points="35,45 85,45 85,95 35,95" fill="${fill}"/>
+    <polygon points="35,45 55,25 105,25 85,45" fill="${fill}" opacity="0.75"/>
+    <polygon points="85,45 105,25 105,75 85,95" fill="${fill}" opacity="0.55"/>`,
+  sphere: (fill) => `
+    <circle cx="70" cy="70" r="45" fill="${fill}"/>
+    <ellipse cx="58" cy="55" rx="16" ry="10" fill="#ffffff" opacity="0.35"/>`,
+  cone: (fill) => `
+    <polygon points="70,20 30,98 110,98" fill="${fill}"/>
+    <ellipse cx="70" cy="98" rx="40" ry="12" fill="${fill}" opacity="0.65" stroke="${fill}" stroke-width="1"/>`,
+  cylinder: (fill) => `
+    <ellipse cx="70" cy="35" rx="38" ry="14" fill="${fill}"/>
+    <rect x="32" y="35" width="76" height="55" fill="${fill}" opacity="0.85"/>
+    <ellipse cx="70" cy="90" rx="38" ry="14" fill="${fill}" opacity="0.6"/>`,
+  pyramid: (fill) => `
+    <polygon points="70,15 20,100 120,100" fill="${fill}"/>
+    <polygon points="70,15 70,100 120,100" fill="${fill}" opacity="0.6"/>`,
+};
+
+function shape3DSVG(name) {
+  const fill = pick(CRYSTAL_COLORS);
+  return `<svg width="140" height="140" viewBox="0 0 140 140">${SHAPE3D_DEFS[name](fill)}</svg>`;
+}
+
+function gen3DShape() {
+  return () => {
+    const pool = gscale(SHAPE3D_POOL_BY_GRADE);
+    const name = pool[rand(0, pool.length - 1)];
+    const opts = pool.filter((s) => s !== name).map((s) => SHAPE3D_LABELS[s]);
+    const { options, correctIndex } = buildOptions(SHAPE3D_LABELS[name], opts, Math.min(4, pool.length));
+    return { prompt: 'What 3D shape is this?', visual: shape3DSVG(name), options, correctIndex };
+  };
+}
+
+// Perimeter / area, from simple tile-counting up to numeric-only problems at higher grades.
+const GRID_MAX_BY_GRADE = [2, 3, 5, 6, 8, 10, 12];
+
+function gridSVG(rows, cols) {
+  const cell = Math.max(14, Math.min(28, Math.floor(200 / Math.max(rows, cols))));
+  const w = cols * cell;
+  const h = rows * cell;
+  let rects = '';
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      rects += `<rect x="${c * cell}" y="${r * cell}" width="${cell}" height="${cell}" fill="${(r + c) % 2 === 0 ? '#c9a7f5' : '#e4d4fb'}" stroke="#8b5fbf" stroke-width="1.5"/>`;
+    }
+  }
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${rects}</svg>`;
+}
+
+function genMeasurement() {
+  return () => {
+    const gradeIdx = getGrade();
+    const maxDim = gscale(GRID_MAX_BY_GRADE);
+    const rows = rand(2, maxDim);
+    const cols = rand(2, maxDim);
+
+    let mode = 'count';
+    if (gradeIdx >= 5) mode = pick(['perimeter-numeric', 'area-numeric']);
+    else if (gradeIdx >= 3) mode = pick(['perimeter-grid', 'area-grid']);
+
+    if (mode === 'count' || mode === 'area-grid') {
+      const correct = rows * cols;
+      const spread = Math.max(2, Math.round(correct * 0.2));
+      const { options, correctIndex } = buildOptions(correct, numberPool(correct, 1, correct + spread * 2, spread));
+      return {
+        prompt: mode === 'count' ? 'How many crystal tiles are there?' : 'What is the area (in tiles)?',
+        visual: gridSVG(rows, cols),
+        options: options.map(String),
+        correctIndex,
+      };
+    }
+    if (mode === 'perimeter-grid') {
+      const correct = 2 * (rows + cols);
+      const spread = Math.max(2, Math.round(correct * 0.2));
+      const { options, correctIndex } = buildOptions(correct, numberPool(correct, 1, correct + spread * 2, spread));
+      return {
+        prompt: 'What is the perimeter (all the way around)?',
+        visual: gridSVG(rows, cols),
+        options: options.map(String),
+        correctIndex,
+      };
+    }
+    const w = rand(4, maxDim * 3);
+    const h = rand(4, maxDim * 3);
+    if (mode === 'perimeter-numeric') {
+      const correct = 2 * (w + h);
+      const spread = Math.max(3, Math.round(correct * 0.15));
+      const { options, correctIndex } = buildOptions(correct, numberPool(correct, 1, correct + spread * 2, spread));
+      return {
+        prompt: `A crystal wall is ${w} by ${h}. What is its perimeter?`,
+        visual: `<span style="font-size:32px;">📐</span>`,
+        options: options.map(String),
+        correctIndex,
+      };
+    }
+    const correct = w * h;
+    const spread = Math.max(3, Math.round(correct * 0.15));
+    const { options, correctIndex } = buildOptions(correct, numberPool(correct, 1, correct + spread * 2, spread));
     return {
-      prompt: 'How many sides does this shape have?',
-      visual: shapeSVG(name),
+      prompt: `A crystal wall is ${w} by ${h}. What is its area?`,
+      visual: `<span style="font-size:32px;">📐</span>`,
       options: options.map(String),
       correctIndex,
     };
@@ -170,55 +364,92 @@ function genShapeSides() {
 
 const PATTERN_ICONS = ['🌸', '🦋', '🌼', '🍄', '🌿', '🐝'];
 
-function genPatternAB() {
+// AB pattern for Prep/Year1, ABC pattern from Year2 up.
+function genFlowerTrail() {
   return () => {
-    const [a, b] = sample(PATTERN_ICONS, 2);
-    const seqLen = 6;
-    const seq = [];
-    for (let i = 0; i < seqLen; i++) seq.push(i % 2 === 0 ? a : b);
-    const correct = seqLen % 2 === 0 ? a : b;
-    const shown = seq.join(' ');
-    const distractorPool = PATTERN_ICONS.filter((c) => c !== correct);
-    const { options, correctIndex } = buildOptions(correct, [b === correct ? a : b, ...distractorPool]);
-    return {
-      prompt: 'What comes next in the pattern?',
-      visual: `<span style="letter-spacing:8px">${shown} ❓</span>`,
-      options,
-      correctIndex,
-    };
-  };
-}
-
-function genPatternABC() {
-  return () => {
+    const useABC = getGrade() >= 2;
+    if (!useABC) {
+      const [a, b] = sample(PATTERN_ICONS, 2);
+      const seq = [a, b, a, b, a, b];
+      const correct = a;
+      const shown = seq.join(' ');
+      const distractorPool = PATTERN_ICONS.filter((c) => c !== correct);
+      const { options, correctIndex } = buildOptions(correct, [b, ...distractorPool]);
+      return { prompt: 'What comes next in the pattern?', visual: `<span style="letter-spacing:8px">${shown} ❓</span>`, options, correctIndex };
+    }
     const [a, b, c] = sample(PATTERN_ICONS, 3);
     const seq = [a, b, c, a, b, c, a];
     const correct = b;
     const shown = seq.join(' ');
     const distractorPool = PATTERN_ICONS.filter((x) => x !== correct);
     const { options, correctIndex } = buildOptions(correct, [a, c, ...distractorPool]);
+    return { prompt: 'What comes next in the pattern?', visual: `<span style="letter-spacing:8px">${shown} ❓</span>`, options, correctIndex };
+  };
+}
+
+const STEP_POOL_BY_GRADE = [
+  [1],
+  [1, 2, 5, 10],
+  [1, 2, 3, 5, 10],
+  [1, 2, 3, 4, 5, 10, 25],
+  [2, 3, 4, 5, 10, 25, 50],
+  [5, 10, 25, 50, 100],
+  [10, 25, 50, 100, 1000],
+];
+const START_MAX_BY_GRADE = [10, 20, 50, 200, 1000, 5000, 20000];
+
+function genNumberPattern() {
+  return () => {
+    const steps = gscale(STEP_POOL_BY_GRADE);
+    const step = steps[rand(0, steps.length - 1)];
+    const startMax = gscale(START_MAX_BY_GRADE);
+    const start = rand(1, startMax);
+    const seq = [start, start + step, start + step * 2, start + step * 3];
+    const correct = start + step * 4;
+    const spread = Math.max(3, step * 2);
+    const { options, correctIndex } = buildOptions(correct, numberPool(correct, 0, correct + spread * 3, spread));
     return {
-      prompt: 'What comes next in the pattern?',
-      visual: `<span style="letter-spacing:8px">${shown} ❓</span>`,
-      options,
+      prompt: 'What is the next number?',
+      visual: `<span style="font-size:32px;font-weight:800;">${seq.join(', ')}, ❓</span>`,
+      options: options.map(String),
       correctIndex,
     };
   };
 }
 
-function genNumberPattern() {
+// Fractions shown as a shaded flower/pie, denominators grow with grade.
+const FRACTION_DENOMS_BY_GRADE = [[2], [2], [2, 3, 4], [2, 3, 4, 5, 6, 8], [2, 3, 4, 5, 6, 8, 10], [2, 3, 4, 5, 6, 8, 10], [2, 3, 4, 5, 6, 8, 10]];
+const FRACTION_DISTRACTOR_POOL = ['1/2', '1/3', '2/3', '1/4', '2/4', '3/4', '1/5', '2/5', '1/6', '5/6', '1/8', '3/8', '1/10', '3/10'];
+
+function pieSliceSVG(numerator, denominator, fill) {
+  const cx = 70;
+  const cy = 70;
+  const r = 55;
+  let paths = '';
+  const anglePer = 360 / denominator;
+  for (let i = 0; i < denominator; i++) {
+    const startAngle = i * anglePer - 90;
+    const endAngle = startAngle + anglePer;
+    const x1 = cx + r * Math.cos((startAngle * Math.PI) / 180);
+    const y1 = cy + r * Math.sin((startAngle * Math.PI) / 180);
+    const x2 = cx + r * Math.cos((endAngle * Math.PI) / 180);
+    const y2 = cy + r * Math.sin((endAngle * Math.PI) / 180);
+    const largeArc = anglePer > 180 ? 1 : 0;
+    const filled = i < numerator;
+    paths += `<path d="M${cx},${cy} L${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${largeArc} 1 ${x2.toFixed(1)},${y2.toFixed(1)} Z" fill="${filled ? fill : '#f3edff'}" stroke="#8b5fbf" stroke-width="2"/>`;
+  }
+  return `<svg width="140" height="140" viewBox="0 0 140 140">${paths}</svg>`;
+}
+
+function genFraction() {
   return () => {
-    const step = [1, 2, 5, 10][rand(0, 3)];
-    const start = rand(1, 20);
-    const seq = [start, start + step, start + step * 2, start + step * 3];
-    const correct = start + step * 4;
-    const { options, correctIndex } = buildOptions(correct, numberPool(correct, 0, correct + 20, step * 2));
-    return {
-      prompt: 'What is the next number?',
-      visual: `<span style="font-size:34px;font-weight:800;">${seq.join(', ')}, ❓</span>`,
-      options: options.map(String),
-      correctIndex,
-    };
+    const denomsPool = gscale(FRACTION_DENOMS_BY_GRADE);
+    const denom = denomsPool[rand(0, denomsPool.length - 1)];
+    const num = denom === 2 ? 1 : rand(1, denom - 1);
+    const correct = `${num}/${denom}`;
+    const fill = pick(CRYSTAL_COLORS);
+    const { options, correctIndex } = buildOptions(correct, FRACTION_DISTRACTOR_POOL);
+    return { prompt: 'What fraction of the flower is shaded?', visual: pieSliceSVG(num, denom, fill), options, correctIndex };
   };
 }
 
@@ -231,14 +462,14 @@ const WORLDS = [
     emoji: '🌈',
     icon: 'assets/badge-addsub.png',
     color: '#ff8fab',
-    desc: 'Add & subtract gems with Comet',
+    desc: 'Master numbers with Comet',
     companion: { name: 'Comet', emoji: '🦄' },
     levels: [
-      { id: 'a1', name: 'Gem Gathering (to 10)', gen: genAddition(10, RIDGE_EMOJI) },
-      { id: 'a2', name: 'Gem Gathering (to 20)', gen: genAddition(20, RIDGE_EMOJI) },
-      { id: 'a3', name: 'Sharing Treasure (to 10)', gen: genSubtraction(10, RIDGE_EMOJI) },
-      { id: 'a4', name: 'Sharing Treasure (to 20)', gen: genSubtraction(20, RIDGE_EMOJI) },
-      { id: 'a5', name: 'Rainbow Mix-Up', gen: genMixedAddSub(20, RIDGE_EMOJI) },
+      { id: 'a1', name: 'Gem Gathering', gen: genAddition(RIDGE_EMOJI) },
+      { id: 'a2', name: 'Treasure Take-Away', gen: genSubtraction(RIDGE_EMOJI) },
+      { id: 'a3', name: 'Multiplying Magic', gen: genMultiplication(RIDGE_EMOJI) },
+      { id: 'a4', name: 'Fair Shares', gen: genDivision(RIDGE_EMOJI) },
+      { id: 'a5', name: 'Rainbow Mix-Up', gen: genMixedOps(RIDGE_EMOJI) },
     ],
   },
   {
@@ -247,12 +478,13 @@ const WORLDS = [
     emoji: '💎',
     icon: 'assets/badge-shapes.png',
     color: '#b48ce0',
-    desc: 'Discover shapes with Crystal',
+    desc: 'Discover 2D & 3D shapes with Crystal',
     companion: { name: 'Crystal', emoji: '🦄' },
     levels: [
-      { id: 's1', name: 'Crystal Shapes', gen: genShapeName(['circle', 'square', 'triangle', 'rectangle']) },
-      { id: 's2', name: 'Rare Crystals', gen: genShapeName(['pentagon', 'hexagon', 'star', 'oval', 'diamond']) },
-      { id: 's3', name: 'Count the Facets', gen: genShapeSides() },
+      { id: 's1', name: 'Crystal Shapes', gen: genShapeName() },
+      { id: 's2', name: 'Count the Facets', gen: genShapeSides() },
+      { id: 's3', name: 'Space Crystals', gen: gen3DShape() },
+      { id: 's4', name: 'Crystal Measurements', gen: genMeasurement() },
     ],
   },
   {
@@ -261,12 +493,12 @@ const WORLDS = [
     emoji: '🌸',
     icon: 'assets/badge-patterns.png',
     color: '#ffd166',
-    desc: 'Spot patterns with Blossom',
+    desc: 'Patterns & fractions with Blossom',
     companion: { name: 'Blossom', emoji: '🦄' },
     levels: [
-      { id: 'p1', name: 'Flower Trail (AB)', gen: genPatternAB() },
-      { id: 'p2', name: 'Flower Trail (ABC)', gen: genPatternABC() },
-      { id: 'p3', name: 'Magic Number Path', gen: genNumberPattern() },
+      { id: 'p1', name: 'Flower Trail', gen: genFlowerTrail() },
+      { id: 'p2', name: 'Magic Number Path', gen: genNumberPattern() },
+      { id: 'p3', name: 'Fraction Flowers', gen: genFraction() },
     ],
   },
 ];
@@ -344,8 +576,26 @@ function topbar(showStars = true) {
   return `
     <div class="topbar">
       <div class="title">🦄 Unicorn Island</div>
-      ${showStars ? `<div class="star-total">⭐ ${totalStars()}</div>` : '<div></div>'}
+      <div class="topbar-right">
+        <label class="grade-picker-wrap">
+          <span class="grade-picker-label">Grade</span>
+          <select id="gradePicker" class="grade-picker">
+            ${GRADES.map((g, i) => `<option value="${i}"${i === getGrade() ? ' selected' : ''}>${g}</option>`).join('')}
+          </select>
+        </label>
+        ${showStars ? `<div class="star-total">⭐ ${totalStars()}</div>` : ''}
+      </div>
     </div>`;
+}
+
+function bindTopbar() {
+  const picker = document.getElementById('gradePicker');
+  if (picker) {
+    picker.addEventListener('change', (e) => {
+      setGrade(Number(e.target.value));
+      render();
+    });
+  }
 }
 
 function render() {
@@ -400,6 +650,7 @@ function renderMap() {
       </div>
     </div>`;
 
+  bindTopbar();
   app.querySelectorAll('.quest-pin').forEach((btn) => {
     btn.addEventListener('click', () => {
       if (btn.dataset.locked === 'true') return;
@@ -436,6 +687,7 @@ function renderLevels() {
       <div class="level-grid">${nodes}</div>
     </div>`;
 
+  bindTopbar();
   app.querySelector('.back-btn').addEventListener('click', () => {
     state = { screen: 'map' };
     render();
@@ -485,6 +737,7 @@ function renderQuiz() {
       </div>
     </div>`;
 
+  bindTopbar();
   app.querySelector('.back-btn').addEventListener('click', () => {
     state = { screen: 'levels', worldId: world.id };
     render();
@@ -582,6 +835,7 @@ function renderComplete() {
       </div>
     </div>`;
 
+  bindTopbar();
   document.getElementById('playAgain').addEventListener('click', () => startLevel(world, level));
   document.getElementById('toLevels').addEventListener('click', () => {
     state = { screen: 'levels', worldId: world.id };
