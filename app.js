@@ -319,16 +319,13 @@ function totalStars() {
   return total;
 }
 
-function isWorldUnlocked(worldIndex) {
-  if (worldIndex === 0) return true;
-  const prevWorld = WORLDS[worldIndex - 1];
-  return prevWorld.levels.every((l) => getLevelStars(prevWorld.id, l.id) > 0);
+// All worlds and levels are always open so kids of any age/skill can jump anywhere on the island.
+function isWorldUnlocked() {
+  return true;
 }
 
-function isLevelUnlocked(world, levelIndex) {
-  if (levelIndex === 0) return true;
-  const prevLevel = world.levels[levelIndex - 1];
-  return getLevelStars(world.id, prevLevel.id) > 0;
+function isLevelUnlocked() {
+  return true;
 }
 
 /* ---------- Rendering ---------- */
