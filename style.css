@@ -95,6 +95,42 @@ button { font-family: inherit; }
   padding: 8px 14px;
   border-radius: 999px;
   font-size: 17px;
+  white-space: nowrap;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.grade-picker-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.18);
+  border-radius: 999px;
+  padding: 6px 6px 6px 14px;
+}
+
+.grade-picker-label {
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.grade-picker {
+  border: none;
+  background: #fffdfb;
+  color: var(--ink);
+  font-weight: 800;
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  cursor: pointer;
 }
 
 /* ---------- Screens ---------- */
@@ -440,4 +476,7 @@ button { font-family: inherit; }
   .quiz-prompt { font-size: 19px; }
   .quiz-visual { font-size: 34px; }
   .opt-btn { font-size: 22px; min-height: 64px; }
+  .topbar { flex-wrap: wrap; gap: 8px; }
+  .topbar .title { font-size: 21px; }
+  .topbar-right { width: 100%; justify-content: space-between; }
 }
